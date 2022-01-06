@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>io.github.codingspeedup</groupId>
     <artifactId>execdoc-core</artifactId>
-    <version>2021-09-21.20-SNAPSHOT</version>
+    <version>2022-01-06.18-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>execdoc-core</name>
@@ -15,7 +15,7 @@
     <licenses>
         <license>
             <name>Apache License 2.0</name>
-            <url>https://unlicense.org</url>
+            <url>https://www.apache.org/licenses/LICENSE-2.0</url>
             <distribution>repo</distribution>
         </license>
     </licenses>
@@ -31,7 +31,7 @@
         <maven.compiler.target>11</maven.compiler.target>
 
         <!-- DEPENDENCY VERSIONS -->
-        <commons-beanutils>1.9.4</commons-beanutils>
+        <commons-beanutils.version>1.9.4</commons-beanutils.version>
         <commons-io.version>2.11.0</commons-io.version>
         <commons-lang3.version>3.12.0</commons-lang3.version>
         <commons-math3.version>3.6.1</commons-math3.version>
@@ -40,8 +40,7 @@
         <friendly-id.version>1.1.0</friendly-id.version>
         <java-diff-utils.version>4.11</java-diff-utils.version>
         <javaparser.version>3.23.1</javaparser.version>
-        <jgit.version>5.13.0.202109080827-r</jgit.version>
-        <jgrapht.version>1.4.0</jgrapht.version>
+        <jgrapht.version>1.5.1</jgrapht.version>
         <json.version>20210307</json.version>
         <junit.version>4.13.2</junit.version>
         <lombok.version>1.18.22</lombok.version>
@@ -75,9 +74,23 @@
     <dependencies>
 
         <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>${junit.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jgrapht</groupId>
+            <artifactId>jgrapht-core</artifactId>
+            <version>${jgrapht.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -92,18 +105,6 @@
             <version>${slf4j.version}</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>${lombok.version}</version>
-            <scope>provided</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>org.jgrapht</groupId>
-            <artifactId>jgrapht-core</artifactId>
-            <version>${jgrapht.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>org.apache.commons</groupId>
@@ -113,7 +114,7 @@
         <dependency>
             <groupId>commons-beanutils</groupId>
             <artifactId>commons-beanutils</artifactId>
-            <version>${commons-beanutils}</version>
+            <version>${commons-beanutils.version}</version>
         </dependency>
         <dependency>
             <groupId>commons-io</groupId>
@@ -182,12 +183,6 @@
             <groupId>io.github.java-diff-utils</groupId>
             <artifactId>java-diff-utils</artifactId>
             <version>${java-diff-utils.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.eclipse.jgit</groupId>
-            <artifactId>org.eclipse.jgit</artifactId>
-            <version>${jgit.version}</version>
         </dependency>
 
         <dependency>
