@@ -22,22 +22,22 @@ The amount of data can be large, but we are not talking about big data.
 On the other hand dealing directly with Prolog on a daily basis is not something that a 
 business analyst or a regular developer is willing to do.
 
-The main functionalities implemented here are concerned with mining various types of 
+<br/>
+
+<img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/ADM_KDM.png" width="480" height="280">
+
+<br/>
+
+The main functionalities implemented here are concerned with mining various types of
 input sources and mapping the gathered result to Prolog facts and rules.
-At the core a taxonomy based on the 
-OMG [Knowledge Discovery Model](https://en.wikipedia.org/wiki/Knowledge_Discovery_Metamodel) 
+At the core, a taxonomy based on the
+OMG [Knowledge Discovery Model](https://en.wikipedia.org/wiki/Knowledge_Discovery_Metamodel)
 is used.
 The conceptual hierarchy can be easily extended according to the necessities of the project.
 
-<br/>
-
-<img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/ADM_KDM.png" width="500" height="300">
-
-<br/>
-
 Here is an overview picture on the supported workflows:
 
-<img src="https://raw.githubusercontent.com/codingspeedup/execdoc-core/main/src/test/resources/readme/workflows.png" width="400" height="200">
+<img src="https://raw.githubusercontent.com/codingspeedup/execdoc-core/main/src/test/resources/readme/workflows.png" width="450" height="200">
 
 For now minimal mining functionalities are implemented for:
 - Filesystem
