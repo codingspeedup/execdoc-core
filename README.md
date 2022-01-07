@@ -1,6 +1,6 @@
 # execdoc-core
 
-*this is work in progress...*
+Remark: *this is work in progress*.
 
 This library provides core functionalities for developing various automation utilities 
 that can mine and generate both executable code and office documents.
@@ -14,7 +14,7 @@ can be intuitively or even transparently used both by humans and computers in co
 Such a knowledge base can be used for querying and reasoning about the project data and can
 be updated automatically.
 
-
+<img src="https://raw.githubusercontent.com/codingspeedup/execdoc-core/main/src/test/resources/readme/prolog-kdm.png" width="300" height="100">
 
 At some point the realization occurred that a Prolog program can serve as a solution for 
 storing and processing project related information.
@@ -27,12 +27,17 @@ input sources and mapping the gathered result to Prolog facts and rules.
 At the core a taxonomy based on the 
 OMG [Knowledge Discovery Model](https://en.wikipedia.org/wiki/Knowledge_Discovery_Metamodel) 
 is used.
+The conceptual hierarchy can be easily extended according to the necessities of the project.
 
-![KDM](https://en.wikipedia.org/wiki/File:ADM_KDM.png)
+<br/>
 
-Here is a general picture on the supported workflows:
+<img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/ADM_KDM.png" width="500" height="300">
 
+<br/>
 
+Here is an overview picture on the supported workflows:
+
+<img src="https://raw.githubusercontent.com/codingspeedup/execdoc-core/main/src/test/resources/readme/workflows.png" width="400" height="200">
 
 For now minimal mining functionalities are implemented for:
 - Filesystem
