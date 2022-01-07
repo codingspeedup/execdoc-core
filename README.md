@@ -35,7 +35,7 @@ OMG [Knowledge Discovery Model](https://en.wikipedia.org/wiki/Knowledge_Discover
 is used.
 The conceptual hierarchy can be easily extended according to the necessities of the project.
 
-Here is an overview picture on the supported workflows:
+Here is an overview of the supported workflows:
 
 <img src="https://raw.githubusercontent.com/codingspeedup/execdoc-core/main/src/test/resources/readme/workflows.png" width="450" height="200">
 
