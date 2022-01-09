@@ -4,21 +4,16 @@ import io.github.codingspeedup.execdoc.blueprint.kb.taxonomy.BpElement;
 import io.github.codingspeedup.execdoc.blueprint.kb.taxonomy.BpEntity;
 import io.github.codingspeedup.execdoc.blueprint.kb.taxonomy.BpRelationship;
 import io.github.codingspeedup.execdoc.toolbox.utilities.NumberUtility;
-import io.github.codingspeedup.execdoc.toolbox.utilities.UuidUtility;
 import it.unibo.tuprolog.core.*;
 import it.unibo.tuprolog.solve.Solver;
 import it.unibo.tuprolog.solve.classic.ClassicSolverFactory;
 import it.unibo.tuprolog.theory.Theory;
-import it.unibo.tuprolog.theory.parsing.ClausesParser;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.jetbrains.annotations.NotNull;
 
 import java.lang.Integer;
 import java.lang.reflect.Field;
@@ -61,20 +56,13 @@ public class BpKb {
         learnedPredicates.add(KbNames.getFunctor(BpEntity.class));
     }
 
-    static String ensureKbId(BpElement element) {
-        if (StringUtils.isBlank(element.getKbId())) {
-            element.setKbId(UuidUtility.nextUuid());
-        }
-        return element.getKbId();
-    }
-
     public void learn(Clause clause) {
         theory.plus(clause);
         solver = null;
     }
 
-    public Clause learn(String functor, Object... arguments) {
-        Clause clause = Clause.of(structOf(functor, arguments));
+    public Clause learn(Object functor, Object... arguments) {
+        Clause clause = Clause.of(BpKbUtils.structOf(functor, arguments).getLeft());
         learn(clause);
         return clause;
     }
@@ -84,7 +72,7 @@ public class BpKb {
             return null;
         }
         String functor = learnTypeHierarchy(entity.getClass());
-        String kbId = ensureKbId(entity);
+        String kbId = BpKbUtils.ensureKbId(entity);
         if (!learnedElements.contains(kbId)) {
             learn(functor, Atom.of(kbId));
             learnedElements.add(kbId);
@@ -99,7 +87,7 @@ public class BpKb {
             return null;
         }
         String functor = learnTypeHierarchy(relationship.getClass());
-        String kbId = ensureKbId(relationship);
+        String kbId = BpKbUtils.ensureKbId(relationship);
         if (!learnedElements.contains(kbId)) {
             learn(functor, kbId, relationship.getFrom(), relationship.getTo());
             learnedElements.add(kbId);
@@ -129,20 +117,15 @@ public class BpKb {
         return functors;
     }
 
-    public KbResult solve(boolean findAll, String... goal) {
-        String clauseString = Arrays.stream(goal).filter(Objects::nonNull).collect(Collectors.joining()).trim();
-        if (!clauseString.endsWith(".")) {
-            clauseString = clauseString + ".";
-        }
-        List<Clause> clauses = ClausesParser.getWithStandardOperators().parseClauses(clauseString);
-        return solve(clauses.get(0).getHead(), findAll);
+    public KbResult solve(boolean solveList, Object... goal) {
+        return solve(solveList, BpKbUtils.parseStruct(goal));
     }
 
-    public KbResult solveList(String functor, Object... args) {
+    public KbResult solveList(Object functor, Object... args) {
         return solve(true, functor, args);
     }
 
-    public KbResult solveOnce(String functor, Object... args) {
+    public KbResult solveOnce(Object functor, Object... args) {
         return solve(false, functor, args);
     }
 
@@ -202,7 +185,7 @@ public class BpKb {
         return kb.replace(" :- true.", ".");
     }
 
-    private KbResult solve(Struct goal, boolean solveList) {
+    private KbResult solve(boolean solveList, Struct goal) {
         if (solver == null) {
             solver = ClassicSolverFactory.INSTANCE.mutableSolverOf(theory);
         }
@@ -212,72 +195,11 @@ public class BpKb {
         return new KbResult(solver.solveOnce(goal));
     }
 
-    private KbResult solve(boolean solveList, String functor, Object... args) {
-        List<Var> varList = new ArrayList<>();
-
-        Map<String, Var> varMap = new HashMap<>();
-        List<Term> terms = new ArrayList<>();
-        for (Object arg : args) {
-            if (arg instanceof String) {
-                String id = ((String) arg).trim();
-                if (id.charAt(0) == Character.toUpperCase(id.charAt(0))) {
-                    Var var = varMap.computeIfAbsent(id, Var::of);
-                    varList.add(var);
-                    terms.add(var);
-                } else {
-                    terms.add(Struct.of(id));
-                }
-            } else if (arg instanceof Var) {
-                varList.add((Var) arg);
-                terms.add((Var) arg);
-            } else if (arg instanceof Term) {
-                terms.add((Term) arg);
-            } else if (arg instanceof Integer) {
-                terms.add(it.unibo.tuprolog.core.Integer.of((Integer) arg));
-            } else if (arg instanceof Long) {
-                terms.add(it.unibo.tuprolog.core.Integer.of((Long) arg));
-            } else if (arg instanceof Float) {
-                terms.add(it.unibo.tuprolog.core.Real.of((Float) arg));
-            } else if (arg instanceof Double) {
-                terms.add(it.unibo.tuprolog.core.Real.of((Double) arg));
-            } else {
-                break;
-            }
-        }
-        return new KbResult(solve(Struct.of(functor, terms), solveList), varList);
+    private KbResult solve(boolean solveList, Object functor, Object... args) {
+        Pair<Struct, List<Var>> structVar = BpKbUtils.structOf(functor, args);
+        return new KbResult(solve(solveList, structVar.getLeft()), structVar.getRight());
     }
 
-    private Struct structOf(String functor, Object... arguments) {
-        List<Term> terms = new ArrayList<>();
-        for (Object value : arguments) {
-            if (value == null) {
-                terms.add(Empty.block());
-            } else if (value instanceof Term) {
-                terms.add((Term) value);
-            } else if (value instanceof String) {
-                terms.add(Atom.of((String) value));
-            } else if (value instanceof Integer) {
-                terms.add(it.unibo.tuprolog.core.Integer.of((Integer) value));
-            } else if (value instanceof BpEntity) {
-                terms.add(Atom.of(learn((BpEntity) value)));
-            } else if (value instanceof Boolean) {
-                terms.add(Truth.of((Boolean) value));
-            } else if (value instanceof Long) {
-                terms.add(it.unibo.tuprolog.core.Integer.of((Long) value));
-            } else if (value instanceof Double) {
-                terms.add(Real.of((Double) value));
-            } else if (value instanceof Float) {
-                terms.add(Real.of((Float) value));
-            } else if (value instanceof Cell) {
-                terms.add(Atom.of(KbNames.getAtom((Cell) value)));
-            } else if (value instanceof Sheet) {
-                terms.add(Atom.of(KbNames.getAtom((Sheet) value)));
-            } else {
-                throw new UnsupportedOperationException("Undefined mapping for " + value.getClass().getSimpleName());
-            }
-        }
-        return Struct.of(functor, terms);
-    }
 
     private String learnTypeHierarchy(Class<?> childType) {
         String childPredicate = KbNames.getFunctor(childType);
