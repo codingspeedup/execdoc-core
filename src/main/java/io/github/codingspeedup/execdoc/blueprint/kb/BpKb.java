@@ -133,6 +133,16 @@ public class BpKb {
         return functors;
     }
 
+    public KbResult solve(boolean solveList, Struct goal) {
+        if (solver == null) {
+            solver = ClassicSolverFactory.INSTANCE.mutableSolverOf(theory);
+        }
+        if (solveList) {
+            return new KbResult(solver.solveList(goal));
+        }
+        return new KbResult(solver.solveOnce(goal));
+    }
+
     public KbResult solve(boolean solveList, Object... goal) {
         return solve(solveList, BpKbUtils.parseStruct(goal));
     }
@@ -163,24 +173,13 @@ public class BpKb {
         return solveEntity(new HashMap<>(), entityType, ids.iterator().next());
     }
 
-    public <E extends BpRelationship> Set<Triple<String, String, String>> solveRelationships(Class<E> relationshipType) {
-        String entityPredicate = learnTypeHierarchy(relationshipType);
-        KbResult solutions = solveList(entityPredicate, X, Y, Z);
+    public <R extends BpRelationship> Set<Triple<String, String, String>> solveRelationships(Class<R> relationshipType) {
+        KbResult solutions = solveList(relationshipType, X, Y, Z);
         return solutions.getSubstitutions().stream().map(s -> Triple.of(KbResult.asString(s[0]), KbResult.asString(s[1]), KbResult.asString(s[2]))).collect(Collectors.toSet());
     }
 
-    private <R extends BpRelationship> R solveRelationship(Class<R> relationshipType, String kbId) {
+    public <R extends BpRelationship> R solveRelationship(Class<R> relationshipType, String kbId) {
         return solveRelationship(new HashMap<>(), relationshipType, kbId);
-    }
-
-    private KbResult solve(boolean solveList, Struct goal) {
-        if (solver == null) {
-            solver = ClassicSolverFactory.INSTANCE.mutableSolverOf(theory);
-        }
-        if (solveList) {
-            return new KbResult(solver.solveList(goal));
-        }
-        return new KbResult(solver.solveOnce(goal));
     }
 
     private KbResult solve(boolean solveList, Object functor, Object... args) {
@@ -290,18 +289,20 @@ public class BpKb {
     @SneakyThrows
     @SuppressWarnings({"unchecked"})
     private <R extends BpRelationship> R solveRelationship(Map<String, BpElement> discovered, Class<R> relationshipType, String kbId) {
-        Struct goal = BpKbUtils.structOf(true, relationshipType, Atom.of(kbId), Y, Z).getLeft();
+        Pair<Struct, List<Var>> structVar = BpKbUtils.structOf(true, relationshipType, Atom.of(kbId), Y, Z);
+        Struct goal = structVar.getLeft();
         String goalKey = goal.toString();
         if (discovered.containsKey(goalKey)) {
             return (R) discovered.get(goalKey);
         }
         R relationship = null;
-        KbResult solution = solve(false, goal);
-        if (CollectionUtils.isNotEmpty(solution.getYes())) {
+        KbResult solution = new KbResult(solve(false, goal), structVar.getRight());
+        List<Term[]> substitutions = solution.getSubstitutions();
+        if (CollectionUtils.isNotEmpty(substitutions)) {
+            Term[] subst = substitutions.get(0);
             relationship = relationshipType.getConstructor().newInstance();
             discovered.put(goalKey, relationship);
             relationship.setKbId(kbId);
-            Term[] subst = solution.getSubstitutions().get(0);
             relationship.setFrom(KbResult.asString(subst[0]));
             relationship.setTo(KbResult.asString(subst[1]));
             recallFields(discovered, relationshipType, relationship);
@@ -345,7 +346,11 @@ public class BpKb {
                     if (CollectionUtils.isNotEmpty(subs)) {
                         Set<?> valueAsSet = (Set<?>) field.get(entity);
                         if (valueAsSet == null) {
-                            valueAsSet = new HashSet<>();
+                            if (NullPointerException.class.equals(kbFunctor.T2())) {
+                                valueAsSet = new HashSet<>();
+                            } else {
+                                valueAsSet = (Set<?>) kbFunctor.T2().getConstructor().newInstance();
+                            }
                             field.set(entity, valueAsSet);
                         }
                         for (Term[] sub : subs) {
@@ -362,7 +367,11 @@ public class BpKb {
                         });
                         List<?> valueAsList = (List<?>) field.get(entity);
                         if (valueAsList == null) {
-                            valueAsList = new ArrayList<>();
+                            if (NullPointerException.class.equals(kbFunctor.T2())) {
+                                valueAsList = new ArrayList<>();
+                            } else {
+                                valueAsList = (List<?>) kbFunctor.T2().getConstructor().newInstance();
+                            }
                             field.set(entity, valueAsList);
                         }
                         for (Term[] sub : subs) {
@@ -374,7 +383,11 @@ public class BpKb {
                     if (CollectionUtils.isNotEmpty(subs)) {
                         Map<?, ?> valueAsMap = (Map<?, ?>) field.get(entity);
                         if (valueAsMap == null) {
-                            valueAsMap = new HashMap<>();
+                            if (NullPointerException.class.equals(kbFunctor.T3())) {
+                                valueAsMap = new HashMap<>();
+                            } else {
+                                valueAsMap = (Map<?, ?>) kbFunctor.T3().getConstructor().newInstance();
+                            }
                             field.set(entity, valueAsMap);
                         }
                         for (Term[] sub : subs) {

@@ -6,7 +6,11 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.LinkedList;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -30,6 +34,7 @@ class BpKbTest {
         TestEntity exEnt = new TestEntity();
         exEnt.setSelfReference(exEnt);
         exEnt.setDescription("Lorem ipsum");
+
         exEnt.setBooleanRaw(true);
         exEnt.setBooleanObject(Boolean.FALSE);
         exEnt.setIntRaw(10);
@@ -40,8 +45,25 @@ class BpKbTest {
         exEnt.setFloatObject(11.5F);
         exEnt.setDoubleRaw(20.5D);
         exEnt.setDoubleObject(21.5D);
+
         exEnt.setPairStringString(Pair.of("foo", "bar"));
         exEnt.setTripleStringStringString(Triple.of("qux", "quux", "quuux"));
+
+        exEnt.getFinalSet().add("foo");
+        exEnt.setNonFinalSet(new TreeSet<>());
+        exEnt.getNonFinalSet().add("bar");
+
+        exEnt.getFinalList().add("foo");
+        exEnt.getFinalList().add("bar");
+        exEnt.getFinalList().add("baz");
+        exEnt.setNonFinalList(new LinkedList<>());
+        exEnt.getNonFinalList().add("foo");
+        exEnt.getNonFinalList().add("bar");
+        exEnt.getNonFinalList().add("baz");
+
+        exEnt.getFinalMap().put("foo", "bar");
+        exEnt.setNonFinalMap(new TreeMap<>());
+        exEnt.getNonFinalMap().put("foo", "bar");
 
         TestEntity exEnt2 = new TestEntity();
         exEnt.setOtherReference(exEnt2);
@@ -78,6 +100,32 @@ class BpKbTest {
         assertEquals(21.5D, acEnt.getDoubleObject(), 0.001);
         assertEquals(exEnt.getPairStringString(), acEnt.getPairStringString());
         assertEquals(exEnt.getTripleStringStringString(), acEnt.getTripleStringStringString());
+        assertEquals(TreeSet.class, acEnt.getNonFinalSet().getClass());
+        assertEquals("bar", acEnt.getNonFinalSet().iterator().next());
+        assertEquals("foo", acEnt.getFinalSet().iterator().next());
+        assertEquals(LinkedList.class, acEnt.getNonFinalList().getClass());
+        assertEquals("baz", acEnt.getNonFinalList().get(2));
+        assertEquals("baz", acEnt.getFinalList().get(2));
+        assertEquals(TreeMap.class, acEnt.getNonFinalMap().getClass());
+        assertEquals("bar", acEnt.getNonFinalMap().get("foo"));
+        assertEquals("bar", acEnt.getFinalMap().get("foo"));
+    }
+
+    @Test
+    void learn_relationship() {
+        TestRelationship exRel = new TestRelationship();
+        exRel.setFrom(kb.learn(new TestEntity()));
+        exRel.setTo(kb.learn(new TestEntity()));
+        exRel.setDescription("Lorem ipsum...");
+        String exId = kb.learn(exRel);
+        assertTrue(kb.solveRelationships(TestRelationship.class).stream().map(Triple::getLeft).collect(Collectors.toSet()).contains(exId));
+
+        TestRelationship acRel = kb.solveRelationship(TestRelationship.class, exId);
+        assertEquals(exRel.getFrom(), acRel.getFrom());
+        assertEquals(exRel.getTo(), acRel.getTo());
+        assertEquals(exRel.getDescription(), acRel.getDescription());
+
+        assertEquals(2, kb.findFunctors(exId).size());
     }
 
 }

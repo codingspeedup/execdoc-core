@@ -6,8 +6,22 @@ import lombok.Setter;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 
+import java.util.*;
+
 @KbFunctor
 public class TestEntity implements BpEntity {
+
+    @Getter
+    @KbFunctor(T1 = String.class)
+    private final Set<String> finalSet = new HashSet<>();
+
+    @Getter
+    @KbFunctor(T1 = String.class)
+    private final List<String> finalList = new ArrayList<>();
+
+    @Getter
+    @KbFunctor(T1 = String.class, T2 = String.class)
+    private final Map<String, String> finalMap = new HashMap<>();
 
     @Getter
     @Setter
@@ -87,5 +101,20 @@ public class TestEntity implements BpEntity {
     @Setter
     @KbFunctor(T1 = String.class, T2 = String.class, T3 = String.class)
     private Triple<String, String, String> tripleStringStringString;
+
+    @Getter
+    @Setter
+    @KbFunctor(T1 = String.class, T2 = TreeSet.class)
+    private Set<String> nonFinalSet;
+
+    @Getter
+    @Setter
+    @KbFunctor(T1 = String.class, T2 = LinkedList.class)
+    private List<String> nonFinalList;
+
+    @Getter
+    @Setter
+    @KbFunctor(T1 = String.class, T2 = String.class, T3 = TreeMap.class)
+    private Map<String, String> nonFinalMap;
 
 }

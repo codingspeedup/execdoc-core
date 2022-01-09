@@ -13,4 +13,8 @@ public interface BpRelationship extends BpElement {
 
     void setTo(String kbId);
 
+    default void setFrom(BpEntity entity) { setFrom(entity.getKbId()); }
+
+    default void setTo(BpEntity entity) { setTo(entity.getKbId()); }
+
 }
