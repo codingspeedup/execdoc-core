@@ -53,6 +53,14 @@ public class KbResult extends ArrayList<Solution> {
         return numeric == null ? null : numeric.getValue().toIntExact();
     }
 
+    public static Object asNumeric(Term term) {
+        if (term == null) {
+            return null;
+        }
+        it.unibo.tuprolog.core.Numeric numeric = term.asNumeric();
+        return numeric == null ? null : numeric.getValue();
+    }
+
     public static Boolean asBoolean(Term term) {
         if (term == null) {
             return null;

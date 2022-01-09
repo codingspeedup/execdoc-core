@@ -48,12 +48,16 @@ public class BpKb {
     @Getter
     private final Theory theory = Theory.empty().toMutableTheory();
     private final Set<String> learnedPredicates = new HashSet<>();
-    private final Set<String> learnedElements = new HashSet<>();
 
     private Solver solver;
 
     public BpKb() {
         learnedPredicates.add(KbNames.getFunctor(BpEntity.class));
+    }
+
+    public String listTheory() {
+        String kb = getTheory().toString(true);
+        return kb.replace(" :- true.", ".");
     }
 
     public void learn(Clause clause) {
@@ -62,7 +66,13 @@ public class BpKb {
     }
 
     public Clause learn(Object functor, Object... arguments) {
-        Clause clause = Clause.of(BpKbUtils.structOf(functor, arguments).getLeft());
+        Clause clause = Clause.of(BpKbUtils.structOf(false, functor, arguments).getLeft());
+        learn(clause);
+        return clause;
+    }
+
+    public Clause learn(Struct struct) {
+        Clause clause = Clause.of(struct);
         learn(clause);
         return clause;
     }
@@ -73,9 +83,9 @@ public class BpKb {
         }
         String functor = learnTypeHierarchy(entity.getClass());
         String kbId = BpKbUtils.ensureKbId(entity);
-        if (!learnedElements.contains(kbId)) {
-            learn(functor, Atom.of(kbId));
-            learnedElements.add(kbId);
+        Struct declaration = BpKbUtils.structOf(false, functor, Atom.of(kbId)).getLeft();
+        if (!theory.contains(declaration)) {
+            learn(declaration);
             learnFields(entity.getClass(), entity);
             entity.kbStore(this);
         }
@@ -83,14 +93,20 @@ public class BpKb {
     }
 
     public String learn(BpRelationship relationship) {
-        if (relationship == null || StringUtils.isBlank(relationship.getFrom()) || StringUtils.isBlank(relationship.getTo())) {
+        if (relationship == null) {
             return null;
+        }
+        if (StringUtils.isBlank(relationship.getFrom())) {
+            throw new UnsupportedOperationException("Undefined source");
+        }
+        if (StringUtils.isBlank(relationship.getTo())) {
+            throw new UnsupportedOperationException("Undefined target");
         }
         String functor = learnTypeHierarchy(relationship.getClass());
         String kbId = BpKbUtils.ensureKbId(relationship);
-        if (!learnedElements.contains(kbId)) {
-            learn(functor, kbId, relationship.getFrom(), relationship.getTo());
-            learnedElements.add(kbId);
+        Struct declaration = BpKbUtils.structOf(false, functor, Atom.of(kbId), relationship.getFrom(), relationship.getTo()).getLeft();
+        if (!theory.contains(declaration)) {
+            learn(declaration);
             learnFields(relationship.getClass(), relationship);
             relationship.kbStore(this);
         }
@@ -135,18 +151,8 @@ public class BpKb {
         return sr.getSubstitutions().stream().map(s -> KbResult.asString(s[0])).collect(Collectors.toSet());
     }
 
-    @SneakyThrows
     public <E extends BpEntity> E solveEntity(Class<E> entityType, String kbId) {
-        E entity = null;
-        String functor = learnTypeHierarchy(entityType);
-        KbResult solution = solveOnce(functor, kbId);
-        if (!solution.getYes().isEmpty()) {
-            entity = entityType.getConstructor().newInstance();
-            entity.setKbId(kbId);
-            recallFields(entityType, entity);
-            entity.kbRetrieve(this);
-        }
-        return entity;
+        return solveEntity(new HashMap<>(), entityType, kbId);
     }
 
     public <E extends BpEntity> E solveEntity(Class<E> entityType) {
@@ -154,7 +160,7 @@ public class BpKb {
         if (ids.size() != 1) {
             throw new UnsupportedOperationException("Found " + ids.size() + " entities");
         }
-        return solveEntity(entityType, ids.iterator().next());
+        return solveEntity(new HashMap<>(), entityType, ids.iterator().next());
     }
 
     public <E extends BpRelationship> Set<Triple<String, String, String>> solveRelationships(Class<E> relationshipType) {
@@ -163,26 +169,8 @@ public class BpKb {
         return solutions.getSubstitutions().stream().map(s -> Triple.of(KbResult.asString(s[0]), KbResult.asString(s[1]), KbResult.asString(s[2]))).collect(Collectors.toSet());
     }
 
-    @SneakyThrows
-    public <R extends BpRelationship> R solveRelationship(Class<R> relationshipType, String kbId) {
-        R relationship = null;
-        String functor = KbNames.getFunctor(relationshipType);
-        KbResult solution = solveOnce(functor, kbId, Y, Z);
-        if (!solution.getYes().isEmpty()) {
-            Term[] subst = solution.getSubstitutions().get(0);
-            relationship = relationshipType.getConstructor().newInstance();
-            relationship.setKbId(kbId);
-            relationship.setFrom(KbResult.asString(subst[0]));
-            relationship.setTo(KbResult.asString(subst[1]));
-            recallFields(relationshipType, relationship);
-            relationship.kbRetrieve(this);
-        }
-        return relationship;
-    }
-
-    public String listTheory() {
-        String kb = getTheory().toString(true);
-        return kb.replace(" :- true.", ".");
+    private <R extends BpRelationship> R solveRelationship(Class<R> relationshipType, String kbId) {
+        return solveRelationship(new HashMap<>(), relationshipType, kbId);
     }
 
     private KbResult solve(boolean solveList, Struct goal) {
@@ -196,10 +184,9 @@ public class BpKb {
     }
 
     private KbResult solve(boolean solveList, Object functor, Object... args) {
-        Pair<Struct, List<Var>> structVar = BpKbUtils.structOf(functor, args);
+        Pair<Struct, List<Var>> structVar = BpKbUtils.structOf(true, functor, args);
         return new KbResult(solve(solveList, structVar.getLeft()), structVar.getRight());
     }
-
 
     private String learnTypeHierarchy(Class<?> childType) {
         String childPredicate = KbNames.getFunctor(childType);
@@ -266,6 +253,12 @@ public class BpKb {
                         for (Map.Entry<?, ?> entry : valueAsMap.entrySet()) {
                             learn(predicate, entityKbId, entry.getKey(), entry.getValue());
                         }
+                    } else if (value instanceof BpEntity) {
+                        Atom otherKbId = Atom.of(learn((BpEntity) value));
+                        learn(predicate, entityKbId, otherKbId);
+                    } else if (value instanceof BpRelationship) {
+                        Atom otherKbId = Atom.of(learn((BpRelationship) value));
+                        learn(predicate, entityKbId, otherKbId);
                     } else {
                         learn(predicate, entityKbId, value);
                     }
@@ -275,11 +268,54 @@ public class BpKb {
     }
 
     @SneakyThrows
+    @SuppressWarnings({"unchecked"})
+    private <E extends BpEntity> E solveEntity(Map<String, BpElement> discovered, Class<E> entityType, String kbId) {
+        Struct goal = BpKbUtils.structOf(true, entityType, Atom.of(kbId)).getLeft();
+        String goalKey = goal.toString();
+        if (discovered.containsKey(goalKey)) {
+            return (E) discovered.get(goalKey);
+        }
+        E entity = null;
+        KbResult solution = solve(false, goal);
+        if (CollectionUtils.isNotEmpty(solution.getYes())) {
+            entity = entityType.getConstructor().newInstance();
+            discovered.put(goalKey, entity);
+            entity.setKbId(kbId);
+            recallFields(discovered, entityType, entity);
+            entity.kbRetrieve(this);
+        }
+        return entity;
+    }
+
+    @SneakyThrows
+    @SuppressWarnings({"unchecked"})
+    private <R extends BpRelationship> R solveRelationship(Map<String, BpElement> discovered, Class<R> relationshipType, String kbId) {
+        Struct goal = BpKbUtils.structOf(true, relationshipType, Atom.of(kbId), Y, Z).getLeft();
+        String goalKey = goal.toString();
+        if (discovered.containsKey(goalKey)) {
+            return (R) discovered.get(goalKey);
+        }
+        R relationship = null;
+        KbResult solution = solve(false, goal);
+        if (CollectionUtils.isNotEmpty(solution.getYes())) {
+            relationship = relationshipType.getConstructor().newInstance();
+            discovered.put(goalKey, relationship);
+            relationship.setKbId(kbId);
+            Term[] subst = solution.getSubstitutions().get(0);
+            relationship.setFrom(KbResult.asString(subst[0]));
+            relationship.setTo(KbResult.asString(subst[1]));
+            recallFields(discovered, relationshipType, relationship);
+            relationship.kbRetrieve(this);
+        }
+        return relationship;
+    }
+
+    @SneakyThrows
     @SuppressWarnings("unchecked")
-    private <T extends BpElement> void recallFields(Class<T> entityType, BpElement entity) {
+    private <T extends BpElement> void recallFields(Map<String, BpElement> discovered, Class<T> entityType, BpElement entity) {
         Class<?> parent = entityType.getSuperclass();
         if (parent != null && BpElement.class.isAssignableFrom(parent)) {
-            recallFields((Class<? extends BpElement>) parent, entity);
+            recallFields(discovered, (Class<? extends BpElement>) parent, entity);
         }
         Atom entityKbId = Atom.of(entity.getKbId());
         for (Field field : entityType.getDeclaredFields()) {
@@ -291,17 +327,17 @@ public class BpKb {
                     List<Term[]> subs = solveOnce(predicate, entityKbId, Z1, Z2).getSubstitutions();
                     if (CollectionUtils.isNotEmpty(subs)) {
                         Pair<?, ?> valueAsPair = Pair.of(
-                                asType(kbFunctor.T1(), subs.get(0)[0]),
-                                asType(kbFunctor.T2(), subs.get(0)[1]));
+                                asType(discovered, kbFunctor.T1(), subs.get(0)[0]),
+                                asType(discovered, kbFunctor.T2(), subs.get(0)[1]));
                         field.set(entity, valueAsPair);
                     }
                 } else if (Triple.class.isAssignableFrom(field.getType())) {
-                    List<Term[]> subs = solveOnce(predicate, entityKbId, Z1, Z3, Z3).getSubstitutions();
+                    List<Term[]> subs = solveOnce(predicate, entityKbId, Z1, Z2, Z3).getSubstitutions();
                     if (CollectionUtils.isNotEmpty(subs)) {
                         Triple<?, ?, ?> valueAsTriple = Triple.of(
-                                asType(kbFunctor.T1(), subs.get(0)[0]),
-                                asType(kbFunctor.T2(), subs.get(0)[1]),
-                                asType(kbFunctor.T3(), subs.get(0)[2]));
+                                asType(discovered, kbFunctor.T1(), subs.get(0)[0]),
+                                asType(discovered, kbFunctor.T2(), subs.get(0)[1]),
+                                asType(discovered, kbFunctor.T3(), subs.get(0)[2]));
                         field.set(entity, valueAsTriple);
                     }
                 } else if (Set.class.isAssignableFrom(field.getType())) {
@@ -313,15 +349,15 @@ public class BpKb {
                             field.set(entity, valueAsSet);
                         }
                         for (Term[] sub : subs) {
-                            SET_ADD.invoke(valueAsSet, asType(kbFunctor.T1(), sub[0]));
+                            SET_ADD.invoke(valueAsSet, asType(discovered, kbFunctor.T1(), sub[0]));
                         }
                     }
                 } else if (List.class.isAssignableFrom(field.getType())) {
                     List<Term[]> subs = solveList(predicate, entityKbId, X, Z).getSubstitutions();
                     if (CollectionUtils.isNotEmpty(subs)) {
                         subs.sort((s1, s2) -> {
-                            int i1 = NumberUtility.toIntOrZero((Integer) asType(Integer.class, s1[0]));
-                            int i2 = NumberUtility.toIntOrZero((Integer) asType(Integer.class, s2[0]));
+                            int i1 = NumberUtility.toIntOrZero((Integer) asType(discovered, Integer.class, s1[0]));
+                            int i2 = NumberUtility.toIntOrZero((Integer) asType(discovered, Integer.class, s2[0]));
                             return Integer.compare(i1, i2);
                         });
                         List<?> valueAsList = (List<?>) field.get(entity);
@@ -330,7 +366,7 @@ public class BpKb {
                             field.set(entity, valueAsList);
                         }
                         for (Term[] sub : subs) {
-                            LIST_ADD.invoke(valueAsList, asType(kbFunctor.T1(), sub[1]));
+                            LIST_ADD.invoke(valueAsList, asType(discovered, kbFunctor.T1(), sub[1]));
                         }
                     }
                 } else if (Map.class.isAssignableFrom(field.getType())) {
@@ -343,8 +379,8 @@ public class BpKb {
                         }
                         for (Term[] sub : subs) {
                             MAP_PUT.invoke(valueAsMap,
-                                    asType(kbFunctor.T1(), sub[0]),
-                                    asType(kbFunctor.T2(), sub[1]));
+                                    asType(discovered, kbFunctor.T1(), sub[0]),
+                                    asType(discovered, kbFunctor.T2(), sub[1]));
                         }
                     }
                 } else {
@@ -354,7 +390,7 @@ public class BpKb {
                         if (type.equals(NullPointerException.class)) {
                             type = field.getType();
                         }
-                        field.set(entity, asType(type, subs.get(0)[0]));
+                        field.set(entity, asType(discovered, type, subs.get(0)[0]));
                     }
                 }
             }
@@ -362,26 +398,35 @@ public class BpKb {
     }
 
     @SuppressWarnings("unchecked")
-    private Object asType(Class<?> type, Term term) {
-        if (String.class.isAssignableFrom(type)) {
-            return KbResult.asString(term);
-        }
-        if (Integer.class.isAssignableFrom(type)) {
-            return KbResult.asInteger(term);
-        }
+    private Object asType(Map<String, BpElement> discovered, Class<?> type, Term term) {
         if (BpEntity.class.isAssignableFrom(type)) {
             String kbId = KbResult.asString(term);
             if (StringUtils.isNotBlank(kbId)) {
-                return solveEntity((Class<? extends BpEntity>) type, kbId);
+                return solveEntity(discovered, (Class<? extends BpEntity>) type, kbId);
             }
         }
-        if (Boolean.class.isAssignableFrom(type)) {
+        if (String.class.isAssignableFrom(type)) {
+            return KbResult.asString(term);
+        }
+        if (Integer.class.isAssignableFrom(type) || int.class.equals(type)) {
+            return ((org.gciatto.kt.math.BigInteger) KbResult.asNumeric(term)).toIntExact();
+        }
+        if (Long.class.isAssignableFrom(type) || long.class.equals(type)) {
+            return ((org.gciatto.kt.math.BigInteger) KbResult.asNumeric(term)).toLongExact();
+        }
+        if (Float.class.isAssignableFrom(type) || float.class.equals(type)) {
+            return ((org.gciatto.kt.math.BigDecimal) KbResult.asNumeric(term)).toFloat();
+        }
+        if (Double.class.isAssignableFrom(type) || double.class.equals(type)) {
+            return ((org.gciatto.kt.math.BigDecimal) KbResult.asNumeric(term)).toDouble();
+        }
+        if (Boolean.class.isAssignableFrom(type) || boolean.class.equals(type)) {
             return KbResult.asBoolean(term);
         }
         if (BpRelationship.class.isAssignableFrom(type)) {
             String kbId = KbResult.asString(term);
             if (StringUtils.isNotBlank(kbId)) {
-                return solveRelationship((Class<? extends BpRelationship>) type, kbId);
+                return solveRelationship(discovered, (Class<? extends BpRelationship>) type, kbId);
             }
         }
         throw new UnsupportedOperationException("Undefined conversion to " + type + " from " + term);

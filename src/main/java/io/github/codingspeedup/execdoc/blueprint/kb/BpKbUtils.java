@@ -70,7 +70,7 @@ public class BpKbUtils {
     }
 
 
-    public static Pair<Struct, List<Var>> structOf(Object functor, Object... args) {
+    public static Pair<Struct, List<Var>> structOf(boolean varStrings, Object functor, Object... args) {
         String functorName;
         if (functor instanceof String) {
             functorName = (String) functor;
@@ -90,7 +90,7 @@ public class BpKbUtils {
                     throw new UnsupportedOperationException("Undefined mapping for null");
                 } else if (arg instanceof String) {
                     String foo = ((String) arg).trim();
-                    if (foo.charAt(0) == Character.toUpperCase(foo.charAt(0))) {
+                    if (varStrings && foo.charAt(0) == Character.toUpperCase(foo.charAt(0))) {
                         Var var = varMap.computeIfAbsent(foo, Var::of);
                         varList.add(var);
                         terms.add(var);
