@@ -18,6 +18,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.jetbrains.annotations.NotNull;
 
 import java.lang.Integer;
 import java.lang.reflect.Field;
@@ -60,7 +61,7 @@ public class BpKb {
         learnedPredicates.add(KbNames.getFunctor(BpEntity.class));
     }
 
-    private static String ensureKbId(BpElement element) {
+    static String ensureKbId(BpElement element) {
         if (StringUtils.isBlank(element.getKbId())) {
             element.setKbId(UuidUtility.nextUuid());
         }
@@ -72,8 +73,10 @@ public class BpKb {
         solver = null;
     }
 
-    public void learn(String functor, Object... arguments) {
-        learn(Clause.of(structOf(functor, arguments)));
+    public Clause learn(String functor, Object... arguments) {
+        Clause clause = Clause.of(structOf(functor, arguments));
+        learn(clause);
+        return clause;
     }
 
     public String learn(BpEntity entity) {

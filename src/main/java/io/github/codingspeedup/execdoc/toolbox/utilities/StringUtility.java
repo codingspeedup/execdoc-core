@@ -43,7 +43,13 @@ public class StringUtility {
     }
 
     public static String simpleQuote(String string) {
-        return string == null ? null : "'" + string + "'";
+        if (string == null) {
+            return  null;
+        }
+        if (string.contains("'")) {
+            throw new UnsupportedOperationException("Escaping \"'\" is not specified");
+        }
+        return "'" + string + "'";
     }
 
 }

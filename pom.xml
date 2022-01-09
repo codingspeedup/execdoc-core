@@ -41,15 +41,15 @@
         <java-diff-utils.version>4.11</java-diff-utils.version>
         <javaparser.version>3.23.1</javaparser.version>
         <jgrapht.version>1.5.1</jgrapht.version>
-        <json.version>20210307</json.version>
-        <junit.version>4.13.2</junit.version>
+        <json.version>20211205</json.version>
+        <junit.version>5.8.2</junit.version>
         <lombok.version>1.18.22</lombok.version>
         <openhtmltopdf.version>1.0.10</openhtmltopdf.version>
         <plantuml.version>1.2021.10</plantuml.version>
         <poi.version>5.0.0</poi.version>
         <slf4j.version>1.7.32</slf4j.version>
         <tika.version>2.1.0</tika.version>
-        <thymeleaf.version>3.0.13.RELEASE</thymeleaf.version>
+        <thymeleaf.version>3.0.14.RELEASE</thymeleaf.version>
         <tuprolog.version>0.20.4</tuprolog.version>
 
         <!-- PLUGIN VERSIONS -->
@@ -81,8 +81,8 @@
         </dependency>
 
         <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
             <version>${junit.version}</version>
             <scope>test</scope>
         </dependency>

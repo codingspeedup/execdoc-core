@@ -1,8 +1,9 @@
 package io.github.codingspeedup.execdoc.toolbox.utilities;
 
-import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.*;
 
 public class StringUtilityTest {
 
@@ -16,6 +17,16 @@ public class StringUtilityTest {
     @Test
     public void toBasicL10nKey() {
         assertEquals("1-lorem-ipsum", StringUtility.toBasicL10nKey("\t1 LorÈm ?  ipsum..\n."));
+    }
+
+    @Test
+    void simpleQuote() {
+        assertNull(StringUtility.simpleQuote(null));
+        assertEquals("''", StringUtility.simpleQuote(""));
+        assertEquals("' '", StringUtility.simpleQuote(" "));
+        assertEquals("'\n'", StringUtility.simpleQuote("\n"));
+        assertEquals("'abc'", StringUtility.simpleQuote("abc"));
+        assertThrows(UnsupportedOperationException.class, () -> StringUtility.simpleQuote("'"));
     }
 
 }
